@@ -231,7 +231,9 @@ translate({{'.', _, [Left, Right]}, Meta, []}, _Ann, S)
   TRight = {atom, Ann, Right},
 
   Generated = erl_anno:set_generated(true, Ann),
-  {Var, SV} = elixir_erl_var:build('_', SL),
+  {InnerVar, SI} = elixir_erl_var:build('_', SL),
+  TInnerVar = {var, Generated, InnerVar},
+  {Var, SV} = elixir_erl_var:build('_', SI),
   TVar = {var, Generated, Var},
 
   case proplists:get_value(no_parens, Meta, false) of
@@ -244,24 +246,20 @@ translate({{'.', _, [Left, Right]}, Meta, []}, _Ann, S)
           [TVar]},
         {clause, Generated,
           [TVar],
-          [[
-            ?remote(Generated, erlang, is_atom, [TVar]),
-            {op, Generated, '=/=', TVar, {atom, Generated, nil}},
-            {op, Generated, '=/=', TVar, {atom, Generated, true}},
-            {op, Generated, '=/=', TVar, {atom, Generated, false}}
-          ]],
-          [{call, Generated, {remote, Generated, TVar, TRight}, []}]},
-        {clause, Generated,
-          [TVar],
           [],
-          [?remote(Ann, erlang, error, [TError])]}
+          [{'case', Generated, ?remote(Generated, elixir_erl_pass, no_parens_remote, [TVar, TRight]), [
+            {clause, Generated,
+             [{tuple, Generated, [{atom, Generated, ok}, TInnerVar]}], [], [TInnerVar]},
+            {clause, Generated,
+             [{var, Generated, '_'}], [], [?remote(Ann, erlang, error, [TError])]}
+          ]}]}
       ]}, SV};
     false ->
       {{'case', Generated, TLeft, [
         {clause, Generated,
           [{map, Ann, [{map_field_exact, Ann, TRight, TVar}]}],
           [],
-          [TVar]},
+          [?remote(Generated, elixir_erl_pass, parens_map_field, [TVar])]},
         {clause, Generated,
           [TVar],
           [],
